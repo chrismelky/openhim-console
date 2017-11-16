@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/jembi/openhim-console.svg?branch=master)](https://travis-ci.org/jembi/openhim-console) [![OpenHIM Core](https://img.shields.io/badge/openhim--core-3.4.x-brightgreen.svg)](http://openhim.readthedocs.org/en/v3.4.0/user-guide/versioning.html)
+[![Build Status](https://travis-ci.org/jembi/openhim-console.svg?branch=master)](https://travis-ci.org/jembi/openhim-console) [![OpenHIM Core](https://img.shields.io/badge/openhim--core-3.4.x-brightgreen.svg)](http://openhim.readthedocs.org/en/v3.4.2/user-guide/versioning.html)
 
 OpenHIM Administration Console
 ==============================
@@ -57,6 +57,7 @@ Visit the following link: `https://localhost:8080/authenticate/root@openhim.org`
 
 Developer guide
 ---------------
+To run this version of the console (v1.12.0-rc.1) requires a minimum version of [OpenHIM-Core v4.0.0-rc.5](https://github.com/jembi/openhim-core-js/releases/tag/v4.0.0-rc.5)
 
 Clone the repository and then run `npm install`
 

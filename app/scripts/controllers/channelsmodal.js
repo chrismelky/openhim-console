@@ -1,5 +1,17 @@
 import { getTimeForTimezone, getTimezoneOffset } from '../utils'
 
+const defaultHttpMethods = {
+  GET: false,
+  POST: false,
+  DELETE: false,
+  PUT: false,
+  OPTIONS: false,
+  HEAD: false,
+  TRACE: false,
+  CONNECT: false,
+  PATCH: false
+}
+
 export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Notify, Alerting, channel, channelDuplicate, tab) {
   function notifyUser () {
     // I have no idea what the correct channels changed is supposed to be
@@ -16,6 +28,22 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
     Alerting.AlertAddMsg('top', 'danger', 'An error has occurred while saving the mediator config: #' + err.status + ' - ' + err.data)
     notifyUser()
   };
+
+  function filterEmptyAdds (operation) {
+    // Only filter adds
+    if (operation.op !== 'add') {
+      return true
+    }
+    // Filter null or undefined values
+    if (operation.value == null) {
+      return false
+    }
+    // Filter empty arrays
+    if (Array.isArray(operation.value) && operation.value.length === 0) {
+      return false
+    }
+    return true
+  }
 
   /****************************************************************/
   /**   These are the functions for the Channel initial load     **/
@@ -35,16 +63,26 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
   $scope.autoRetry = {}
   $scope.autoRetry.enableMaxAttempts = false
 
+  $scope.methods = Object.assign({}, defaultHttpMethods)
+
   // get the users for the Channel taglist option and alert users - used in two child controllers
   Api.Users.query(function (users) {
     $scope.users = users
   },
     function () { /* server error - could not connect to API to get Users */ })
 
+  $scope.channelAudits = []
   if (channel) {
     $scope.update = true
     $scope.channel = Api.Channels.get({ channelId: channel._id }, function (channel) {
       $scope.autoRetry.enableMaxAttempts = channel.autoRetryMaxAttempts > 0
+      populateHttpMethods(channel, $scope.methods)
+    })
+    Api.Channels.audits({ channelId: channel._id }, function (audits) {
+      for (const audit of audits) {
+        audit.ops = audit.ops.filter(filterEmptyAdds)
+      }
+      $scope.channelAudits = audits
     })
   } else {
     $scope.update = false
@@ -55,9 +93,11 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
         delete (result.name)
         $scope.channel = result
         $scope.autoRetry.enableMaxAttempts = result.autoRetryMaxAttempts > 0
+        populateHttpMethods($scope.channel, $scope.methods)
       })
     } else {
       $scope.channel = new Api.Channels()
+      populateHttpMethods($scope.channel, $scope.methods)
     }
   }
 
@@ -69,6 +109,7 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
     case 'Data Control': $scope.selectedTab.dataControl = true; break
     case 'Access Control': $scope.selectedTab.accessControl = true; break
     case 'Alerts': $scope.selectedTab.alerts = true; break
+    case 'Logs': $scope.selectedTab.logs = true; break
     default: $scope.selectedTab.basicInfo = true; break
   }
 
@@ -87,20 +128,29 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
     }
 
     switch (channel.type) {
+      case 'http':
+        channel.pollingSchedule = null
+        channel.tcpHost = null
+        channel.tcpPort = null
+        break
       case 'tcp':
         channel.pollingSchedule = null
+        delete channel.methods
         break
       case 'tls':
         channel.pollingSchedule = null
+        delete channel.methods
         break
       case 'polling':
         channel.tcpHost = null
         channel.tcpPort = null
+        delete channel.methods
         break
       default:
         channel.pollingSchedule = null
         channel.tcpHost = null
         channel.tcpPort = null
+        delete channel.methods
     }
 
     switch ($scope.matching.contentMatching) {
@@ -168,6 +218,12 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
     }
 
     switch ($scope.channel.type) {
+      case 'http':
+        if (!$scope.channel.methods || $scope.channel.methods.length === 0) {
+          $scope.ngError.methods = true
+          $scope.ngError.hasErrors = true
+        }
+        break
       case 'tcp':
         if (!$scope.channel.tcpHost) {
           $scope.ngError.tcpHost = true
@@ -301,10 +357,17 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
     }
   }
 
+  $scope.addHttpMethodsToChannel = function () {
+    $scope.channel.methods = Object.keys($scope.methods).filter(function (key) {
+      return $scope.methods[key]
+    })
+  }
+
   $scope.submitFormChannels = function () {
     // clear channel errors that might be old and check fresh validate
     $scope.ngError = {}
     Alerting.AlertReset('hasErrors')
+    $scope.addHttpMethodsToChannel()
 
     // validate the form first to check for any errors
     $scope.validateFormChannels()
@@ -318,6 +381,21 @@ export function ChannelsModalCtrl ($scope, $uibModalInstance, $timeout, Api, Not
   /***************************************************************************/
   /**   These are the general functions for the channel form validation     **/
   /***************************************************************************/
+}
+
+function populateHttpMethods (channel, methods) {
+  if (channel.methods) {
+    for (const channelMethod of channel.methods) {
+      if (channelMethod) {
+        methods[channelMethod] = true
+      }
+    }
+  } else {
+    Object.keys(methods).forEach(function (key) {
+      methods[key] = true
+    })
+  }
+  return methods
 }
 
 export function channelBasicInfoCtrl ($scope, $timeout, $interval, Api, Notify, Alerting) {

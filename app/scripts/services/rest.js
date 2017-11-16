@@ -1,15 +1,21 @@
 export function Api ($rootScope, $resource, config) {
   // fetch API server details
-  let protocol = config.protocol
-  let host = config.host
-  let port = config.port
-  let server = protocol + '://' + host + ':' + port
+  const protocol = config.protocol
+  const host = config.host
+  const hostPath = (config.hostPath || '').replace(/(^\/)|(\/$)/g, '')
+  const port = config.port
+  const server = protocol + '://' + host + ':' + port + (/^\s+$/.test(hostPath) ? '/' + hostPath : '')
 
   return {
     Authenticate: $resource(server + '/authenticate/:email'),
 
     Channels: $resource(server + '/channels/:channelId', { channelId: '@_id' }, {
-      update: { method: 'PUT' }
+      update: { method: 'PUT' },
+      audits: {
+        method: 'GET',
+        url: server + '/channels/:channelId/audits',
+        isArray: true
+      }
     }),
 
     TriggerPollingChannels: $resource(server + '/channels/:channelId/trigger', { channelId: '@_id' }, {}),
