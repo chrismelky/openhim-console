@@ -1,12 +1,13 @@
 import { isValidMSISDN, getHashAndSalt } from '../utils'
 
-export function SetPasswordCtrl ($scope, $uibModal, $routeParams, $timeout, $location, Api, Alerting) {
+export function SetPasswordCtrl ($scope, $sce, $uibModal, $routeParams, $timeout, $location, Api, Alerting) {
   /***************************************************/
   /**         Initial page load functions           **/
   /***************************************************/
 
   // object to store temp values like password
   $scope.temp = {}
+  $scope.phoneNumberTooltip = $sce.trustAsHtml('Accepted format: <br />27123456789 <br />( 5 - 15 digits )')
 
   $scope.passwordSetSuccessful = false
 
